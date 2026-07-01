@@ -4,41 +4,29 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import io.rocketpartners.hris.BuildConfig
+import io.rocketpartners.hris.designsystem.HrisTheme
 
 /**
- * Single-activity host. Real UI (RootScreen + tab scaffold) lands in Phase 1.8; this
- * placeholder exists so the skeleton builds and launches.
+ * Single-activity host. Reads launch flags from intent extras (the Android analog of the iOS launch
+ * args): `--ez mock true`, `--ez autologin true`, `--es tab home|calendar|leave|me|search`.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val mock = intent.getBooleanExtra("mock", BuildConfig.MOCK_DEFAULT)
+        val autoLogin = intent.getBooleanExtra("autologin", false)
+        val initialTab = HrisTab.fromKey(intent.getStringExtra("tab"))
+        val environment = AppEnvironment(applicationContext, mock = mock, autoLogin = autoLogin)
+
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Placeholder()
-                }
+            HrisTheme {
+                RootScreen(environment = environment, initialTab = initialTab)
             }
         }
     }
-}
-
-@Composable
-private fun Placeholder() {
-    Text(
-        text = "RP HRIS",
-        modifier = Modifier
-            .fillMaxSize()
-            .wrapContentSize(Alignment.Center),
-    )
 }
