@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import io.rocketpartners.hris.designsystem.Theme
+import io.rocketpartners.hris.feature.calendar.CalendarScreen
+import io.rocketpartners.hris.feature.home.HomeScreen
 import io.rocketpartners.hris.model.User
 
 /** The five bottom-navigation destinations, mirroring the iOS `MainTabView` tabs. */
@@ -69,8 +71,19 @@ fun MainTabScaffold(
             }
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            TabPlaceholder(tab = selected, userName = currentUser.name)
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (selected) {
+                HrisTab.HOME -> HomeScreen(
+                    environment = environment,
+                    onOpenTimeOff = { selected = HrisTab.TIME_OFF },
+                    onOpenCalendar = { selected = HrisTab.CALENDAR },
+                    onOpenProfile = { selected = HrisTab.ME },
+                )
+                HrisTab.CALENDAR -> CalendarScreen(repository = environment.calendarRepository)
+                else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    TabPlaceholder(tab = selected, userName = currentUser.name)
+                }
+            }
         }
     }
 }
