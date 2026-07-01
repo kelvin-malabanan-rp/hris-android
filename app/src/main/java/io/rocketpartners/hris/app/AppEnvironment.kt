@@ -7,8 +7,18 @@ import io.rocketpartners.hris.core.auth.InMemoryTokenStore
 import io.rocketpartners.hris.core.auth.TokenStore
 import io.rocketpartners.hris.core.networking.ApiClient
 import io.rocketpartners.hris.core.networking.LiveApiClient
+import io.rocketpartners.hris.feature.announcements.AnnouncementRepository
+import io.rocketpartners.hris.feature.announcements.LiveAnnouncementRepository
 import io.rocketpartners.hris.feature.auth.AuthService
 import io.rocketpartners.hris.feature.auth.LiveAuthRepository
+import io.rocketpartners.hris.feature.calendar.CalendarRepository
+import io.rocketpartners.hris.feature.calendar.LiveCalendarRepository
+import io.rocketpartners.hris.feature.leave.LeaveRepository
+import io.rocketpartners.hris.feature.leave.LiveLeaveRepository
+import io.rocketpartners.hris.feature.profile.LiveProfileRepository
+import io.rocketpartners.hris.feature.profile.ProfileRepository
+import io.rocketpartners.hris.feature.wfh.LiveWfhRepository
+import io.rocketpartners.hris.feature.wfh.WfhRepository
 
 /**
  * The single composition root — the one place objects are wired, mirroring iOS `AppEnvironment`.
@@ -32,4 +42,10 @@ class AppEnvironment(
     val apiClient: ApiClient = LiveApiClient(BackendConfig.baseUrl, httpClient, coordinator)
 
     val authService: AuthService = AuthService(LiveAuthRepository(apiClient, tokenStore))
+
+    val calendarRepository: CalendarRepository = LiveCalendarRepository(apiClient)
+    val leaveRepository: LeaveRepository = LiveLeaveRepository(apiClient)
+    val wfhRepository: WfhRepository = LiveWfhRepository(apiClient)
+    val profileRepository: ProfileRepository = LiveProfileRepository(apiClient)
+    val announcementRepository: AnnouncementRepository = LiveAnnouncementRepository(apiClient)
 }
