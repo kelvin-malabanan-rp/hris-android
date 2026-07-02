@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The circular HRIS mark inset generously so the Android 12 splash's circular icon mask doesn't
+     clip the logo's edges (a full-bleed logo gets "cut"). -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/hris_logo"
+    android:inset="24%" />

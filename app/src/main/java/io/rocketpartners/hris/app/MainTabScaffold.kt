@@ -16,13 +16,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.CalendarViewWeek
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -58,8 +58,8 @@ import io.rocketpartners.hris.model.User
 enum class HrisTab(val key: String, val label: String, val icon: ImageVector) {
     HOME("home", "Home", Icons.Filled.GridView),
     CALENDAR("calendar", "Calendar", Icons.Filled.CalendarMonth),
-    TIME_OFF("leave", "Schedule", Icons.Outlined.CalendarViewWeek),
-    ME("me", "Me", Icons.Filled.Person),
+    TIME_OFF("leave", "Schedule", Icons.Filled.EditCalendar),
+    ME("me", "Me", Icons.Filled.AccountCircle),
     SEARCH("search", "Search", Icons.Filled.Search);
 
     companion object {
@@ -145,7 +145,7 @@ fun MainTabScaffold(
 
             // Notification bell (top-right).
             CircleChrome(
-                icon = Icons.Filled.Notifications,
+                icon = Icons.Outlined.Notifications,
                 contentDescription = "Notifications",
                 onClick = { Toast.makeText(context, "Notifications coming soon", Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(Theme.Spacing.lg),
