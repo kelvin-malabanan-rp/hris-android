@@ -88,7 +88,9 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(Theme.Spacing.lg),
+            .padding(horizontal = Theme.Spacing.lg)
+            // Extra top inset so the greeting + avatar clear the floating notification bell.
+            .padding(top = Theme.Spacing.bellClearance, bottom = Theme.Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.lg),
     ) {
         Header(state = state, onOpenProfile = onOpenProfile)

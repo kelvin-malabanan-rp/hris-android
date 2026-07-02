@@ -115,8 +115,8 @@ fun MainTabScaffold(
         if (subScreen != null) {
             subScreen()
         } else {
-            // Tab root content, inset at the bottom so it clears the floating bar.
-            Box(Modifier.fillMaxSize().padding(bottom = 96.dp)) {
+            // Tab root content, inset below the status bar and above the floating bar.
+            Box(Modifier.fillMaxSize().statusBarsPadding().padding(bottom = 96.dp)) {
                 when (selected) {
                     HrisTab.HOME -> HomeScreen(
                         environment = environment,
