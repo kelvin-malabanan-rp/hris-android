@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,6 +52,10 @@ fun TicketDetailScreen(id: Int, repository: TicketRepository, onBack: () -> Unit
     val state by store.state.collectAsState()
     val scope = rememberCoroutineScope()
     var reply by remember { mutableStateOf("") }
+    var attachments by remember { mutableStateOf<List<io.rocketpartners.hris.model.UploadFile>>(emptyList()) }
+    val pickImages = io.rocketpartners.hris.feature.common.rememberImageAttachmentPicker { added, _ ->
+        attachments = (attachments + added).take(io.rocketpartners.hris.feature.common.MAX_ATTACHMENTS)
+    }
 
     LaunchedEffect(Unit) { store.load(id) }
 
@@ -76,18 +81,23 @@ fun TicketDetailScreen(id: Int, repository: TicketRepository, onBack: () -> Unit
                         detail.messages.forEach { MessageBubble(it) }
                     }
                     if (!detail.ticket.isResolved) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(Theme.Spacing.md),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.sm),
-                        ) {
-                            OutlinedTextField(reply, { reply = it }, placeholder = { Text("Message") }, modifier = Modifier.weight(1f), maxLines = 4)
-                            IconButton(
-                                enabled = reply.isNotBlank() && !state.isSending,
-                                onClick = { scope.launch { if (store.reply(reply, emptyList())) reply = "" } },
+                        Column(Modifier.fillMaxWidth().padding(Theme.Spacing.md), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.sm)) {
+                            io.rocketpartners.hris.feature.common.AttachmentChips(attachments, onRemove = { f -> attachments = attachments - f })
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.sm),
                             ) {
-                                if (state.isSending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                                else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Theme.brand)
+                                IconButton(enabled = attachments.size < io.rocketpartners.hris.feature.common.MAX_ATTACHMENTS, onClick = pickImages) {
+                                    Icon(Icons.Filled.AttachFile, contentDescription = "Attach image", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                OutlinedTextField(reply, { reply = it }, placeholder = { Text("Message") }, modifier = Modifier.weight(1f), maxLines = 4)
+                                IconButton(
+                                    enabled = (reply.isNotBlank() || attachments.isNotEmpty()) && !state.isSending,
+                                    onClick = { scope.launch { if (store.reply(reply, attachments)) { reply = ""; attachments = emptyList() } } },
+                                ) {
+                                    if (state.isSending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Theme.brand)
+                                }
                             }
                         }
                     }
