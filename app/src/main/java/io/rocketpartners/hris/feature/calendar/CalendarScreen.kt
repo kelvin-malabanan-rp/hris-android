@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -190,20 +191,23 @@ private fun DayCell(
     onClick: () -> Unit,
 ) {
     Column(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.xxs),
     ) {
         Box(
+            // Clip to a circle BEFORE clickable so the press ripple is a circle, not a square box.
             modifier = Modifier
                 .size(32.dp)
+                .clip(CircleShape)
                 .then(
                     when {
-                        isSelected -> Modifier.background(Theme.brand, CircleShape)
+                        isSelected -> Modifier.background(Theme.brand)
                         isToday -> Modifier.border(Theme.Stroke.focus, Theme.brand, CircleShape)
                         else -> Modifier
                     },
-                ),
+                )
+                .clickable(enabled = inMonth, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -291,7 +295,7 @@ private fun EventRow(event: CalendarEvent) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) {
         Box(Modifier.size(width = 4.dp, height = 36.dp).background(hexColor(event.color) ?: Theme.brand, RoundedCornerShape(2.dp)))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.xxs)) {
-            Text(event.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(eventDisplayTitle(event.type, event.title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             event.type?.let {
                 Text(it.replaceFirstChar(Char::uppercase), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -303,6 +307,11 @@ private fun EventRow(event: CalendarEvent) {
         )
     }
 }
+
+/** Prefix holiday events with the PH flag (the company observes Philippine holidays); other
+ *  event types render their title unchanged. */
+internal fun eventDisplayTitle(type: String?, title: String): String =
+    if (type?.equals("holiday", ignoreCase = true) == true) "🇵🇭 $title" else title
 
 private fun timeLabel(event: CalendarEvent): String {
     if (event.allDay) return "All day"
