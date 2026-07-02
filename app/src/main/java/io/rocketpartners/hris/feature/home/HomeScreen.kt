@@ -77,6 +77,9 @@ fun HomeScreen(
     }
     val state by store.state.collectAsState()
     LaunchedEffect(Unit) { store.load() }
+    // Hoisted above the early return so the scroll position survives recomposition (a
+    // rememberScrollState created after a conditional return isn't at a stable slot).
+    val scrollState = rememberScrollState()
 
     val phase = state.phase
     if (phase is Phase.Failed) {
@@ -89,7 +92,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(horizontal = Theme.Spacing.lg)
             // Extra top inset so the greeting + avatar sit below the floating notification bell
             // with clear breathing room between the bell and the avatar.
