@@ -17,8 +17,6 @@ import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,8 +27,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import io.rocketpartners.hris.feature.common.InlineDatePicker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,9 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.rocketpartners.hris.designsystem.Theme
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -67,6 +63,8 @@ fun ApplyLeaveSheet(
     val state by store.state.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    // Which date the inline picker is editing ("start"/"end"), or null for the form.
+    var editingField by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { store.loadTypes() }
     LaunchedEffect(state.phase) {
@@ -78,6 +76,17 @@ fun ApplyLeaveSheet(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Theme.Spacing.lg).padding(bottom = Theme.Spacing.xxl),
             verticalArrangement = Arrangement.spacedBy(Theme.Spacing.md),
         ) {
+            val editingKey = editingField
+            if (editingKey != null) {
+                Text(if (editingKey == "start") "Start Date" else "End Date", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                InlineDatePicker(
+                    initial = if (editingKey == "start") state.startDate else state.endDate,
+                    onConfirm = { if (editingKey == "start") store.setStart(it) else store.setEnd(it); editingField = null },
+                    onCancel = { editingField = null },
+                )
+                return@Column
+            }
+
             // Cancel / title / Submit bar.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -110,9 +119,9 @@ fun ApplyLeaveSheet(
             // Dates
             SectionLabel("Dates")
             GroupCard {
-                DatePillRow("Start", state.startDate, store::setStart)
+                DatePillRow("Start", state.startDate) { editingField = "start" }
                 HorizontalDivider(Modifier.padding(horizontal = Theme.Spacing.lg))
-                DatePillRow("End", state.endDate, store::setEnd)
+                DatePillRow("End", state.endDate) { editingField = "end" }
             }
 
             // Impact
@@ -172,31 +181,16 @@ private fun TypeRow(state: ApplyLeaveUiState, locked: Boolean, onSelect: (Int) -
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DatePillRow(label: String, value: LocalDate, onSelect: (LocalDate) -> Unit) {
-    var open by remember { mutableStateOf(false) }
+private fun DatePillRow(label: String, value: LocalDate, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(Theme.Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Text(
             value.format(DATE_FMT),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp)).clickable { open = true }.padding(horizontal = Theme.Spacing.md, vertical = Theme.Spacing.sm),
+            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp)).clickable(onClick = onClick).padding(horizontal = Theme.Spacing.md, vertical = Theme.Spacing.sm),
         )
-    }
-    if (open) {
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = value.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-        DatePickerDialog(
-            onDismissRequest = { open = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { onSelect(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
-                    open = false
-                }) { Text("OK") }
-            },
-            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
-        ) { DatePicker(state = pickerState) }
     }
 }
 
