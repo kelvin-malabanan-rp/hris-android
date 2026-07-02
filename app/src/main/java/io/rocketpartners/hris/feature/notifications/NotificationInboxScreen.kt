@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,8 +26,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,8 +41,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import io.rocketpartners.hris.core.ui.Phase
+import io.rocketpartners.hris.model.AppNotification
 import io.rocketpartners.hris.designsystem.EmptyState
 import io.rocketpartners.hris.designsystem.ErrorState
 import io.rocketpartners.hris.designsystem.FilterChip
@@ -105,6 +111,7 @@ fun NotificationInboxScreen(
                         refreshing = phase is Phase.Loading,
                         onRefresh = { scope.launch { store.load() } },
                         onOpen = { selected = it },
+                        onMarkRead = { scope.launch { store.markRead(it) } },
                     )
                 }
             }
@@ -119,7 +126,8 @@ private fun InboxList(
     filter: InboxFilter,
     refreshing: Boolean,
     onRefresh: () -> Unit,
-    onOpen: (io.rocketpartners.hris.model.AppNotification) -> Unit,
+    onOpen: (AppNotification) -> Unit,
+    onMarkRead: (AppNotification) -> Unit,
 ) {
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
         if (groups.isEmpty()) {
@@ -135,9 +143,49 @@ private fun InboxList(
             groups.forEach { group ->
                 stickyHeader(key = group.title) { SectionHeader(group.title) }
                 items(group.items, key = { it.id }) { notification ->
-                    InboxRow(notification, Modifier.fillMaxWidth().clickable { onOpen(notification) })
+                    SwipeableInboxRow(notification, onOpen = { onOpen(notification) }, onMarkRead = { onMarkRead(notification) })
                 }
             }
+        }
+    }
+}
+
+/** Wraps a row in a swipe-to-mark-read gesture (only for unread rows); the row snaps back after the
+ *  swipe fires. Mirrors iOS's trailing "Read" swipe action. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableInboxRow(notification: AppNotification, onOpen: () -> Unit, onMarkRead: () -> Unit) {
+    if (notification.isRead) {
+        InboxRow(notification, Modifier.fillMaxWidth().clickable(onClick = onOpen))
+        return
+    }
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            // Fire mark-read on any completed swipe, but never actually dismiss — return false to snap back.
+            if (value != SwipeToDismissBoxValue.Settled) onMarkRead()
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = { ReadSwipeBackground(state.dismissDirection) },
+        content = {
+            InboxRow(
+                notification,
+                Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).clickable(onClick = onOpen),
+            )
+        },
+    )
+}
+
+/** The brand-colored "Read" affordance revealed behind a swiping row, edge-aligned to the drag. */
+@Composable
+private fun ReadSwipeBackground(direction: SwipeToDismissBoxValue) {
+    val alignment = if (direction == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+    Box(Modifier.fillMaxSize().background(Theme.brand).padding(horizontal = Theme.Spacing.lg), contentAlignment = alignment) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.xs)) {
+            Icon(Icons.Filled.MarkEmailRead, contentDescription = null, tint = Color.White)
+            Text("Read", color = Color.White, fontWeight = FontWeight.SemiBold)
         }
     }
 }
