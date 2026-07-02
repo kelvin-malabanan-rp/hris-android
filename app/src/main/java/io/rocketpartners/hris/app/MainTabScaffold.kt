@@ -29,6 +29,9 @@ import androidx.compose.ui.text.style.TextAlign
 import io.rocketpartners.hris.designsystem.Theme
 import io.rocketpartners.hris.feature.calendar.CalendarScreen
 import io.rocketpartners.hris.feature.home.HomeScreen
+import io.rocketpartners.hris.feature.timeoff.ApprovalKind
+import io.rocketpartners.hris.feature.timeoff.ApprovalsScreen
+import io.rocketpartners.hris.feature.timeoff.ScheduleScreen
 import io.rocketpartners.hris.model.User
 
 /** The five bottom-navigation destinations, mirroring the iOS `MainTabView` tabs. */
@@ -80,6 +83,27 @@ fun MainTabScaffold(
                     onOpenProfile = { selected = HrisTab.ME },
                 )
                 HrisTab.CALENDAR -> CalendarScreen(repository = environment.calendarRepository)
+                HrisTab.TIME_OFF -> {
+                    var approvals by rememberSaveable { mutableStateOf<ApprovalKind?>(null) }
+                    val kind = approvals
+                    if (kind != null) {
+                        ApprovalsScreen(
+                            leaveRepository = environment.leaveRepository,
+                            wfhRepository = environment.wfhRepository,
+                            canApproveLeave = currentUser.canApproveLeave,
+                            canApproveWfh = currentUser.canApproveWfh,
+                            preselect = kind,
+                            onBack = { approvals = null },
+                        )
+                    } else {
+                        ScheduleScreen(
+                            environment = environment,
+                            canApproveLeave = currentUser.canApproveLeave,
+                            canApproveWfh = currentUser.canApproveWfh,
+                            onOpenApprovals = { approvals = it },
+                        )
+                    }
+                }
                 else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     TabPlaceholder(tab = selected, userName = currentUser.name)
                 }
