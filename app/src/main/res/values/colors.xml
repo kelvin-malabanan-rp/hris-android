@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand launch background; mirrors the iOS LaunchBackground asset. -->
-    <color name="launch_background">#FFFFFF</color>
+    <!-- Splash background (light mode); overridden dark in values-night. -->
+    <color name="launch_background">#0B1B2E</color>
+    <!-- Dark navy tile behind the circular HRIS mark in the launcher icon. -->
+    <color name="icon_background">#0B1B2E</color>
 </resources>
