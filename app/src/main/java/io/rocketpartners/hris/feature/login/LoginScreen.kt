@@ -126,6 +126,12 @@ private fun SignIn(authService: AuthService, onShowInfo: () -> Unit) {
             TextButton(onClick = onShowInfo) { Text("Info") }
         }
         Spacer(Modifier.weight(1f))
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(io.rocketpartners.hris.R.drawable.hris_logo),
+            contentDescription = "HRIS logo",
+            modifier = Modifier.size(72.dp),
+        )
+        Spacer(Modifier.size(Theme.Spacing.lg))
         Text("Welcome Back", style = MaterialTheme.typography.headlineSmall)
         Text(
             "Sign in to manage your workspace",
