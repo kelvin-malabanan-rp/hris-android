@@ -6,31 +6,35 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import io.rocketpartners.hris.R
 
-/** Poppins — the app's brand typeface, bundled in `res/font`. */
-val Poppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold),
+/**
+ * Inter — an open-source typeface designed as a metric/shape substitute for Apple's San Francisco
+ * (SF Pro), which can't be bundled on Android for licensing reasons. Loaded from a single variable
+ * font; the weight axis is driven per [FontWeight] (variable fonts are supported on minSdk 26+).
+ */
+val AppFontFamily = FontFamily(
+    Font(R.font.inter_variable, FontWeight.Normal),
+    Font(R.font.inter_variable, FontWeight.Medium),
+    Font(R.font.inter_variable, FontWeight.SemiBold),
+    Font(R.font.inter_variable, FontWeight.Bold),
 )
 
-/** Material3 [Typography] with every style re-based on [Poppins]. */
+/** Material3 [Typography] with every style re-based on [AppFontFamily]. */
 val HrisTypography: Typography = Typography().let { base ->
     Typography(
-        displayLarge = base.displayLarge.copy(fontFamily = Poppins),
-        displayMedium = base.displayMedium.copy(fontFamily = Poppins),
-        displaySmall = base.displaySmall.copy(fontFamily = Poppins),
-        headlineLarge = base.headlineLarge.copy(fontFamily = Poppins),
-        headlineMedium = base.headlineMedium.copy(fontFamily = Poppins),
-        headlineSmall = base.headlineSmall.copy(fontFamily = Poppins),
-        titleLarge = base.titleLarge.copy(fontFamily = Poppins),
-        titleMedium = base.titleMedium.copy(fontFamily = Poppins),
-        titleSmall = base.titleSmall.copy(fontFamily = Poppins),
-        bodyLarge = base.bodyLarge.copy(fontFamily = Poppins),
-        bodyMedium = base.bodyMedium.copy(fontFamily = Poppins),
-        bodySmall = base.bodySmall.copy(fontFamily = Poppins),
-        labelLarge = base.labelLarge.copy(fontFamily = Poppins),
-        labelMedium = base.labelMedium.copy(fontFamily = Poppins),
-        labelSmall = base.labelSmall.copy(fontFamily = Poppins),
+        displayLarge = base.displayLarge.copy(fontFamily = AppFontFamily),
+        displayMedium = base.displayMedium.copy(fontFamily = AppFontFamily),
+        displaySmall = base.displaySmall.copy(fontFamily = AppFontFamily),
+        headlineLarge = base.headlineLarge.copy(fontFamily = AppFontFamily),
+        headlineMedium = base.headlineMedium.copy(fontFamily = AppFontFamily),
+        headlineSmall = base.headlineSmall.copy(fontFamily = AppFontFamily),
+        titleLarge = base.titleLarge.copy(fontFamily = AppFontFamily),
+        titleMedium = base.titleMedium.copy(fontFamily = AppFontFamily),
+        titleSmall = base.titleSmall.copy(fontFamily = AppFontFamily),
+        bodyLarge = base.bodyLarge.copy(fontFamily = AppFontFamily),
+        bodyMedium = base.bodyMedium.copy(fontFamily = AppFontFamily),
+        bodySmall = base.bodySmall.copy(fontFamily = AppFontFamily),
+        labelLarge = base.labelLarge.copy(fontFamily = AppFontFamily),
+        labelMedium = base.labelMedium.copy(fontFamily = AppFontFamily),
+        labelSmall = base.labelSmall.copy(fontFamily = AppFontFamily),
     )
 }
