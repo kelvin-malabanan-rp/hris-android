@@ -1,46 +1,60 @@
 package io.rocketpartners.hris.feature.leave
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.rocketpartners.hris.designsystem.Theme
-import io.rocketpartners.hris.feature.common.DateField
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-private val FIELD_FMT = DateTimeFormatter.ofPattern("EEE, MMM d, yyyy", Locale.getDefault())
+private val DATE_FMT = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
 
-/** Bottom sheet to apply for (or edit) leave. Mirrors iOS `ApplyLeaveView`. */
+/** Apply for (or edit) leave — mirrors the iOS `ApplyLeaveView`: Cancel/title/Submit bar, a Type
+ *  dropdown, remaining-balance line, grouped Dates card, Impact card, and a Reason field. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApplyLeaveSheet(
@@ -56,68 +70,133 @@ fun ApplyLeaveSheet(
 
     LaunchedEffect(Unit) { store.loadTypes() }
     LaunchedEffect(state.phase) {
-        if (state.phase is ApplyPhase.Submitted) {
-            onSaved()
-            onDismiss()
-        }
+        if (state.phase is ApplyPhase.Submitted) { onSaved(); onDismiss() }
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Theme.Spacing.xl).padding(bottom = Theme.Spacing.xxl),
-            verticalArrangement = Arrangement.spacedBy(Theme.Spacing.lg),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = Theme.Spacing.lg).padding(bottom = Theme.Spacing.xxl),
+            verticalArrangement = Arrangement.spacedBy(Theme.Spacing.md),
         ) {
-            Text(if (store.editingId != null) "Edit Leave" else "Apply for Leave", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-
-            if (state.typesUnavailable) {
-                Warning("Leave types couldn't be loaded. Try again later.")
-            }
-
-            // Leave type
-            if (state.typeLocked) {
-                OutlinedTextField(value = state.lockedTypeName ?: "Leave", onValueChange = {}, readOnly = true, enabled = false, label = { Text("Leave Type") }, modifier = Modifier.fillMaxWidth())
-            } else {
-                Text("Leave Type", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.sm), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                    state.leaveTypes.forEach { type ->
-                        FilterChip(selected = state.selectedTypeId == type.id, onClick = { store.setType(type.id) }, label = { Text(type.name) })
+            // Cancel / title / Submit bar.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Text(
+                    if (store.editingId != null) "Edit Leave" else "Apply for Leave",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+                if (state.phase is ApplyPhase.Submitting) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    TextButton(onClick = { scope.launch { store.submit() } }, enabled = state.canSubmit) {
+                        Text(if (store.editingId != null) "Save" else "Submit", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
 
-            DateField("Start Date", state.startDate, onSelect = store::setStart, formatter = FIELD_FMT)
-            DateField("End Date", state.endDate, onSelect = store::setEnd, formatter = FIELD_FMT)
+            // Leave Type
+            SectionLabel("Leave Type")
+            TypeRow(state = state, locked = state.typeLocked, onSelect = store::setType)
+            state.selectedBalance?.remainingDays?.let { remaining ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.sm)) {
+                    Icon(Icons.Filled.EditCalendar, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Text("${formatDays(remaining)} days remaining", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
-            OutlinedTextField(
-                value = state.reason,
-                onValueChange = store::setReason,
-                label = { Text("Reason (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-            )
+            // Dates
+            SectionLabel("Dates")
+            GroupCard {
+                DatePillRow("Start", state.startDate, store::setStart)
+                HorizontalDivider(Modifier.padding(horizontal = Theme.Spacing.lg))
+                DatePillRow("End", state.endDate, store::setEnd)
+            }
 
-            // Preview
-            Text("${state.requestedDays} day${if (state.requestedDays == 1) "" else "s"} requested", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            state.projectedRemaining?.let {
-                Text("Projected balance after: ${formatDays(it)} days", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Impact
+            state.projectedRemaining?.let { projected ->
+                SectionLabel("Impact")
+                GroupCard {
+                    Row(Modifier.fillMaxWidth().padding(Theme.Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Balance after this request", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Text("${formatDays(projected)} days", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = if (projected < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                    }
+                }
             }
             if (state.exceedsBalance) Warning("This request exceeds your available balance.")
             state.medicalCertAdvisory?.let { Warning(it) }
-            (state.phase as? ApplyPhase.Failed)?.let { Warning(it.message) }
 
-            Button(
-                onClick = { scope.launch { store.submit() } },
-                enabled = state.canSubmit,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (state.phase is ApplyPhase.Submitting) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(if (store.editingId != null) "Save Changes" else "Submit")
-                }
-            }
-            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
+            // Reason
+            SectionLabel("Reason")
+            OutlinedTextField(value = state.reason, onValueChange = store::setReason, placeholder = { Text("Optional") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+
+            if (state.typesUnavailable) Warning("Leave types couldn't be loaded. Try again later.")
+            (state.phase as? ApplyPhase.Failed)?.let { Warning(it.message) }
         }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = Theme.Spacing.sm))
+}
+
+@Composable
+private fun GroupCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(Theme.Radius.control)), content = content)
+}
+
+@Composable
+private fun TypeRow(state: ApplyLeaveUiState, locked: Boolean, onSelect: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val name = if (locked) (state.lockedTypeName ?: "Leave") else (state.selectedType?.name ?: "Select")
+    Box {
+        Row(
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(Theme.Radius.control))
+                .clickable(enabled = !locked) { open = true }
+                .padding(Theme.Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Type", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(name, style = MaterialTheme.typography.bodyMedium, color = if (locked) MaterialTheme.colorScheme.onSurfaceVariant else Theme.brand, fontWeight = FontWeight.Medium)
+            if (!locked) Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = Theme.brand, modifier = Modifier.size(18.dp).padding(start = Theme.Spacing.xs))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            state.leaveTypes.forEach { type ->
+                DropdownMenuItem(text = { Text(type.name) }, onClick = { onSelect(type.id); open = false })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePillRow(label: String, value: LocalDate, onSelect: (LocalDate) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(Theme.Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(
+            value.format(DATE_FMT),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp)).clickable { open = true }.padding(horizontal = Theme.Spacing.md, vertical = Theme.Spacing.sm),
+        )
+    }
+    if (open) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = value.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { onSelect(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
+                    open = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+        ) { DatePicker(state = pickerState) }
     }
 }
 
