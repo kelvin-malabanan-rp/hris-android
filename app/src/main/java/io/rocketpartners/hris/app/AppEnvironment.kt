@@ -9,12 +9,16 @@ import io.rocketpartners.hris.core.networking.ApiClient
 import io.rocketpartners.hris.core.networking.LiveApiClient
 import io.rocketpartners.hris.feature.announcements.AnnouncementRepository
 import io.rocketpartners.hris.feature.announcements.LiveAnnouncementRepository
+import io.rocketpartners.hris.feature.assets.AssetRepository
+import io.rocketpartners.hris.feature.assets.LiveAssetRepository
 import io.rocketpartners.hris.feature.auth.AuthService
 import io.rocketpartners.hris.feature.auth.LiveAuthRepository
 import io.rocketpartners.hris.feature.calendar.CalendarRepository
 import io.rocketpartners.hris.feature.calendar.LiveCalendarRepository
 import io.rocketpartners.hris.feature.leave.LeaveRepository
 import io.rocketpartners.hris.feature.leave.LiveLeaveRepository
+import io.rocketpartners.hris.feature.payslips.LivePayslipRepository
+import io.rocketpartners.hris.feature.payslips.PayslipRepository
 import io.rocketpartners.hris.feature.profile.LiveProfileRepository
 import io.rocketpartners.hris.feature.profile.ProfileRepository
 import io.rocketpartners.hris.feature.wfh.LiveWfhRepository
@@ -48,4 +52,6 @@ class AppEnvironment(
     val wfhRepository: WfhRepository = LiveWfhRepository(apiClient)
     val profileRepository: ProfileRepository = LiveProfileRepository(apiClient)
     val announcementRepository: AnnouncementRepository = LiveAnnouncementRepository(apiClient)
+    val payslipRepository: PayslipRepository = LivePayslipRepository(apiClient)
+    val assetRepository: AssetRepository = LiveAssetRepository(apiClient)
 }
