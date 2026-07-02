@@ -27,8 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import io.rocketpartners.hris.designsystem.Theme
+import io.rocketpartners.hris.feature.assets.MyAssetsScreen
 import io.rocketpartners.hris.feature.calendar.CalendarScreen
 import io.rocketpartners.hris.feature.home.HomeScreen
+import io.rocketpartners.hris.feature.payslips.PayslipsScreen
+import io.rocketpartners.hris.feature.profile.ProfileScreen
 import io.rocketpartners.hris.feature.timeoff.ApprovalKind
 import io.rocketpartners.hris.feature.timeoff.ApprovalsScreen
 import io.rocketpartners.hris.feature.timeoff.ScheduleScreen
@@ -101,6 +104,19 @@ fun MainTabScaffold(
                             canApproveLeave = currentUser.canApproveLeave,
                             canApproveWfh = currentUser.canApproveWfh,
                             onOpenApprovals = { approvals = it },
+                        )
+                    }
+                }
+                HrisTab.ME -> {
+                    var route by rememberSaveable { mutableStateOf("root") }
+                    when (route) {
+                        "payslips" -> PayslipsScreen(environment.payslipRepository, onBack = { route = "root" })
+                        "assets" -> MyAssetsScreen(environment.assetRepository, onBack = { route = "root" })
+                        else -> ProfileScreen(
+                            environment = environment,
+                            onOpenPayslips = { route = "payslips" },
+                            onOpenAssets = { route = "assets" },
+                            onOpenSupport = { selected = HrisTab.SEARCH },
                         )
                     }
                 }
