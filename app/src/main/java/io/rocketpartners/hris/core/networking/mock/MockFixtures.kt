@@ -157,15 +157,15 @@ internal object MockFixtures {
         [
           {"id":2001,"date":"2026-06-09","dayName":"Monday","type":"WFH","reason":"Focus day","status":"APPROVED"},
           {"id":2002,"date":"2026-06-11","dayName":"Wednesday","type":"WFH","reason":null,"status":"APPROVED"},
-          {"id":2003,"date":"2026-06-16","dayName":"Monday","type":"WFH","reason":"Deliveries","status":"PENDING"},
-          {"id":2004,"date":"2026-06-23","dayName":"Monday","type":"WFH","reason":null,"status":"PENDING"}
+          {"id":2003,"date":"2026-06-16","dayName":"Monday","type":"WFH","reason":"Deliveries","status":"APPROVED"},
+          {"id":2004,"date":"2026-06-23","dayName":"Monday","type":"WFH","reason":null,"status":"APPROVED"}
         ]
     """.trimIndent()
 
     private val wfhNewScheduleData = """
         [
           {"id":2005,"date":"2026-06-30","dayName":"Tuesday","type":"WFH","reason":"Requested via app","status":"APPROVED"},
-          {"id":2006,"date":"2026-07-01","dayName":"Wednesday","type":"WFH","reason":"Requested via app","status":"PENDING"}
+          {"id":2006,"date":"2026-07-01","dayName":"Wednesday","type":"WFH","reason":"Requested via app","status":"APPROVED"}
         ]
     """.trimIndent()
 

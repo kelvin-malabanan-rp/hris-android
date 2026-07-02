@@ -18,8 +18,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -351,8 +355,11 @@ private fun MyRequestLeaveRow(leave: LeaveApplication, onClick: () -> Unit) {
 }
 
 @Composable
-private fun MyRequestWfhRow(schedule: WfhSchedule, onClick: () -> Unit) {
-    ContentCard(Modifier.clickable(onClick = onClick)) {
+private fun MyRequestWfhRow(schedule: WfhSchedule, onCancel: () -> Unit) {
+    // A scheduled WFH day is auto-approved; the row isn't a link — it carries a "…" overflow menu
+    // whose only action is Cancel WFH. Mirrors iOS `MyRequestWfhRow`.
+    var menuOpen by remember { mutableStateOf(false) }
+    ContentCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) {
             Box(Modifier.size(width = 4.dp, height = 44.dp).background(Theme.Accent.WFH.tint, RoundedCornerShape(2.dp)))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.xxs)) {
@@ -366,7 +373,17 @@ private fun MyRequestWfhRow(schedule: WfhSchedule, onClick: () -> Unit) {
                 }
             }
             schedule.status?.let { StatusBadge(rawStatus = it) }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Filled.MoreHoriz, contentDescription = "Options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Cancel WFH", color = MaterialTheme.colorScheme.error) },
+                        onClick = { menuOpen = false; onCancel() },
+                    )
+                }
+            }
         }
     }
 }
