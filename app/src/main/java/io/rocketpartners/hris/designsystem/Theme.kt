@@ -1,6 +1,7 @@
 package io.rocketpartners.hris.designsystem
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -120,8 +121,39 @@ object Theme {
     fun statusColor(raw: String): Color = statusColor(raw, isSystemInDarkTheme())
 }
 
-private val LightColors = lightColorScheme(primary = Theme.brandLight)
-private val DarkColors = darkColorScheme(primary = Theme.brandDark)
+// iOS "grouped" palette: a light-grey background with white cards (and the dark-mode inverse),
+// so cards read as distinct surfaces the way `systemGroupedBackground`/`secondarySystemGrouped`
+// do on iOS. ContentCard/DSCard use `surfaceContainer`, so it is pinned to the card color.
+private val LightColors = lightColorScheme(
+    primary = Theme.brandLight,
+    onPrimary = Color.White,
+    background = Color(0xFFF2F2F7),
+    onBackground = Color(0xFF1C1C1E),
+    surface = Color(0xFFF2F2F7),
+    onSurface = Color(0xFF1C1C1E),
+    surfaceContainer = Color.White,
+    surfaceContainerHigh = Color.White,
+    surfaceContainerLow = Color.White,
+    surfaceVariant = Color(0xFFE5E5EA),
+    onSurfaceVariant = Color(0xFF6B7280),
+    error = Color(0xFFD11507),
+    outline = Color(0xFFC6C6C8),
+)
+private val DarkColors = darkColorScheme(
+    primary = Theme.brandDark,
+    onPrimary = Color.White,
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFF2F2F7),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFF2F2F7),
+    surfaceContainer = Color(0xFF1C1C1E),
+    surfaceContainerHigh = Color(0xFF2C2C2E),
+    surfaceContainerLow = Color(0xFF1C1C1E),
+    surfaceVariant = Color(0xFF2C2C2E),
+    onSurfaceVariant = Color(0xFF98989F),
+    error = Color(0xFFFF453A),
+    outline = Color(0xFF48484A),
+)
 
 /** Material3 theme wrapper; sets the brand accent as the color-scheme primary. */
 @Composable
@@ -129,9 +161,17 @@ fun HrisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
+    val scheme = if (darkTheme) DarkColors else LightColors
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = scheme,
         typography = HrisTypography,
-        content = content,
-    )
+    ) {
+        // Root Surface so LocalContentColor defaults to onBackground app-wide (otherwise uncolored
+        // text falls back to black and is invisible on dark surfaces).
+        androidx.compose.material3.Surface(
+            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+            color = scheme.background,
+            content = content,
+        )
+    }
 }

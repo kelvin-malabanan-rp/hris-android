@@ -76,6 +76,7 @@ fun CalendarScreen(repository: CalendarRepository, modifier: Modifier = Modifier
             .padding(Theme.Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.lg),
     ) {
+        io.rocketpartners.hris.designsystem.ScreenHeader("Calendar")
         FilterChipsRow(state.presentTypes, state.activeTypes, store::toggleType, store::clearTypes)
 
         MonthHeader(

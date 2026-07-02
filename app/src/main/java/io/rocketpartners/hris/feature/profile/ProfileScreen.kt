@@ -85,6 +85,7 @@ fun ProfileScreen(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Theme.Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Theme.Spacing.lg),
             ) {
+                io.rocketpartners.hris.designsystem.ScreenHeader("Me")
                 val profile = state.profile
                 if (profile == null) {
                     SkeletonBlock(Modifier.fillMaxWidth(), height = 88.dp)

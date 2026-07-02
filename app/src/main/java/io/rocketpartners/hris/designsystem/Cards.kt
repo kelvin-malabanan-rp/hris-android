@@ -1,6 +1,5 @@
 package io.rocketpartners.hris.designsystem
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -14,7 +13,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 
 /**
@@ -46,14 +44,15 @@ fun ContentCard(
     padding: Dp = Theme.Spacing.cardPadding,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(cornerRadius)
-    Column(
-        modifier = modifier
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer, shape)
-            .padding(padding),
-        content = content,
-    )
+    // A Material Surface (not a bare Box) so content color resolves to onSurface — uncolored text
+    // stays legible on both light and dark card surfaces.
+    androidx.compose.material3.Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(cornerRadius),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(modifier = Modifier.padding(padding), content = content)
+    }
 }
 
 /**

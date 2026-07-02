@@ -16,14 +16,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -83,6 +81,9 @@ fun ScheduleScreen(
     canApproveWfh: Boolean,
     modifier: Modifier = Modifier,
     onOpenApprovals: (ApprovalKind) -> Unit = {},
+    /** External add trigger from the global FAB: "apply" or "wfh"; null = none. */
+    addAction: String? = null,
+    onAddConsumed: () -> Unit = {},
 ) {
     val leaveStore = remember { LeaveStore(environment.leaveRepository) }
     val wfhStore = remember { WfhStore(environment.wfhRepository) }
@@ -98,9 +99,16 @@ fun ScheduleScreen(
     var showApply by remember { mutableStateOf(false) }
     var showWfh by remember { mutableStateOf(false) }
     var showAll by remember { mutableStateOf(false) }
-    var fabMenu by remember { mutableStateOf(false) }
     var cancelWfh by remember { mutableStateOf<WfhSchedule?>(null) }
     var leaveDetail by remember { mutableStateOf<LeaveApplication?>(null) }
+
+    LaunchedEffect(addAction) {
+        when (addAction) {
+            "apply" -> showApply = true
+            "wfh" -> showWfh = true
+        }
+        if (addAction != null) onAddConsumed()
+    }
 
     val requests = remember(leave.leaves, wfh.schedules) { ScheduleRequest.merge(leave.leaves, wfh.schedules) }
     val leaveLoading = leave.phase.isPending()
@@ -111,6 +119,7 @@ fun ScheduleScreen(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Theme.Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Theme.Spacing.xl),
         ) {
+            io.rocketpartners.hris.designsystem.ScreenHeader("Schedule")
             WfhSection(wfh, wfhLoading) { scope.launch { wfhStore.load() } }
             BalancesSection(leave.balances, leaveLoading)
             if (canApproveLeave || canApproveWfh) {
@@ -128,16 +137,6 @@ fun ScheduleScreen(
                 onApplyLeave = { showApply = true },
                 onScheduleWfh = { showWfh = true },
             )
-        }
-
-        Box(Modifier.align(Alignment.BottomEnd).padding(Theme.Spacing.xl)) {
-            FloatingActionButton(onClick = { fabMenu = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add request")
-            }
-            DropdownMenu(expanded = fabMenu, onDismissRequest = { fabMenu = false }) {
-                DropdownMenuItem(text = { Text("Apply for Leave") }, onClick = { fabMenu = false; showApply = true })
-                DropdownMenuItem(text = { Text("Schedule WFH") }, onClick = { fabMenu = false; showWfh = true })
-            }
         }
     }
 
@@ -222,15 +221,18 @@ private fun BalancesSection(balances: List<LeaveBalance>, loading: Boolean) {
     if (balances.isNotEmpty()) {
         SectionHeader("Leave Balances")
         val featured = balances.filter { isFeatured(it) }.ifEmpty { balances }
+        // Color each tile by its position, cycling the accent palette (Annual→purple, Sick→blue,
+        // …) so the grid reads like the iOS balances grid rather than one flat color.
+        val palette = listOf(Theme.Accent.LEAVE, Theme.Accent.INFO, Theme.Accent.PENDING, Theme.Accent.WFH, Theme.Accent.DANGER)
         Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) {
-            featured.chunked(2).forEach { row ->
+            featured.chunked(2).forEachIndexed { rowIndex, row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) {
-                    row.forEach { b ->
+                    row.forEachIndexed { colIndex, b ->
                         LeaveBalanceTile(
                             typeName = b.leaveTypeName ?: "Leave",
                             remaining = b.remainingDays,
                             total = b.totalDays,
-                            accent = Theme.Accent.LEAVE,
+                            accent = palette[(rowIndex * 2 + colIndex) % palette.size],
                             modifier = Modifier.weight(1f),
                         )
                     }
