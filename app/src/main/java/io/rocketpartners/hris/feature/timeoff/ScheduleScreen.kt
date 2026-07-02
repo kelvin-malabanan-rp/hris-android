@@ -146,7 +146,7 @@ fun ScheduleScreen(
         ScheduleWfhSheet(
             usage = wfh.usage,
             onDismiss = { showWfh = false },
-            onSubmit = { date, reason -> wfhStore.scheduleDay(date, reason) },
+            onSubmit = { dates, reason -> wfhStore.scheduleDays(dates, reason) },
         )
     }
     leaveDetail?.let { target ->

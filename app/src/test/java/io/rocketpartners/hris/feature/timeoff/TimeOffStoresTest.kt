@@ -65,11 +65,11 @@ class TimeOffStoresTest {
     }
 
     @Test
-    fun wfhStore_scheduleDayReloadsAndReturnsTrue() = runTest {
+    fun wfhStore_scheduleDaysReloadsAndReturnsCreated() = runTest {
         val repo = FakeWfhRepository(schedulesResult = Result.success(listOf(WfhSchedule(id = 1, date = "2026-07-01"))))
         val store = WfhStore(repo)
-        val ok = store.scheduleDay(LocalDate.of(2026, 7, 1), "focus")
-        assertTrue(ok)
+        val result = store.scheduleDays(listOf(LocalDate.of(2026, 7, 1)), "focus")
+        assertTrue(result is io.rocketpartners.hris.feature.wfh.WfhBatchResult.Success)
         assertEquals(1, store.state.value.schedules.size)
     }
 

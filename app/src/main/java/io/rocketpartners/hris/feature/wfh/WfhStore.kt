@@ -37,14 +37,16 @@ class WfhStore(
         _state.update { it.copy(schedules = schedules, usage = usage, phase = Phase.Loaded) }
     }
 
-    /** Returns true on success so the caller can dismiss the sheet. */
-    suspend fun scheduleDay(date: LocalDate, reason: String?): Boolean = try {
-        repository.schedule(listOf(date), reason)
+    /**
+     * Submits a batch of WFH days and returns the created schedules for per-day classification
+     * (the deduction logic), reloading the list on success. Mirrors iOS `onSchedule`.
+     */
+    suspend fun scheduleDays(dates: List<LocalDate>, reason: String?): WfhBatchResult = try {
+        val created = repository.schedule(dates, reason)
         load()
-        true
+        WfhBatchResult.Success(created)
     } catch (e: Exception) {
-        _state.update { it.copy(phase = Phase.Failed(errorMessage(e, "Couldn't schedule WFH."))) }
-        false
+        WfhBatchResult.Failure(errorMessage(e, "Couldn't schedule WFH."))
     }
 
     suspend fun cancel(schedule: WfhSchedule) {
