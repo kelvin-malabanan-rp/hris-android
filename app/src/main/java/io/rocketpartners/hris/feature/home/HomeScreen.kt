@@ -63,6 +63,8 @@ fun HomeScreen(
     onOpenTimeOff: () -> Unit = {},
     onOpenCalendar: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onViewAllAnnouncements: () -> Unit = {},
+    onOpenAnnouncement: (Announcement) -> Unit = {},
 ) {
     val store = remember {
         HomeStore(
@@ -89,14 +91,15 @@ fun HomeScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Theme.Spacing.lg)
-            // Extra top inset so the greeting + avatar clear the floating notification bell.
-            .padding(top = Theme.Spacing.bellClearance, bottom = Theme.Spacing.lg),
+            // Extra top inset so the greeting + avatar sit below the floating notification bell
+            // with clear breathing room between the bell and the avatar.
+            .padding(top = Theme.Spacing.bellClearance + Theme.Spacing.xl, bottom = Theme.Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.lg),
     ) {
         Header(state = state, onOpenProfile = onOpenProfile)
         StatTiles(state = state, onOpenTimeOff = onOpenTimeOff, onOpenCalendar = onOpenCalendar)
         RecentRequestsCard(state = state, onOpenTimeOff = onOpenTimeOff, onRetry = { store.load() })
-        AnnouncementsCard(state = state, onRetry = { store.load() })
+        AnnouncementsCard(state = state, onRetry = { store.load() }, onViewAll = onViewAllAnnouncements, onOpen = onOpenAnnouncement)
     }
 }
 
@@ -192,8 +195,8 @@ private fun RequestRow(leave: LeaveApplication, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AnnouncementsCard(state: HomeUiState, onRetry: suspend () -> Unit) {
-    DSCard(title = "Announcements") {
+private fun AnnouncementsCard(state: HomeUiState, onRetry: suspend () -> Unit, onViewAll: () -> Unit, onOpen: (Announcement) -> Unit) {
+    DSCard(title = "Announcements", actionTitle = "View all", onAction = onViewAll) {
         when (val phase = state.announcementsPhase) {
             is Phase.Idle, is Phase.Loading ->
                 Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) { SkeletonRow(); SkeletonRow() }
@@ -203,7 +206,7 @@ private fun AnnouncementsCard(state: HomeUiState, onRetry: suspend () -> Unit) {
                     EmptyState(icon = Icons.Filled.Campaign, title = "No announcements", compact = true)
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) {
-                        state.announcements.forEach { AnnouncementRow(it) }
+                        state.announcements.forEach { a -> AnnouncementRow(a) { onOpen(a) } }
                     }
                 }
         }
@@ -211,8 +214,12 @@ private fun AnnouncementsCard(state: HomeUiState, onRetry: suspend () -> Unit) {
 }
 
 @Composable
-private fun AnnouncementRow(announcement: Announcement) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.md)) {
+private fun AnnouncementRow(announcement: Announcement, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.md),
+    ) {
         Icon(
             if (announcement.pinned) Icons.Filled.PushPin else Icons.Filled.Campaign,
             contentDescription = null,
