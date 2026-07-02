@@ -17,8 +17,12 @@ import io.rocketpartners.hris.feature.calendar.CalendarRepository
 import io.rocketpartners.hris.feature.calendar.LiveCalendarRepository
 import io.rocketpartners.hris.feature.leave.LeaveRepository
 import io.rocketpartners.hris.feature.leave.LiveLeaveRepository
+import io.rocketpartners.hris.feature.notifications.LiveNotificationRepository
+import io.rocketpartners.hris.feature.notifications.NotificationRepository
 import io.rocketpartners.hris.feature.payslips.LivePayslipRepository
 import io.rocketpartners.hris.feature.payslips.PayslipRepository
+import io.rocketpartners.hris.feature.tickets.LiveTicketRepository
+import io.rocketpartners.hris.feature.tickets.TicketRepository
 import io.rocketpartners.hris.feature.profile.LiveProfileRepository
 import io.rocketpartners.hris.feature.profile.ProfileRepository
 import io.rocketpartners.hris.feature.wfh.LiveWfhRepository
@@ -54,4 +58,6 @@ class AppEnvironment(
     val announcementRepository: AnnouncementRepository = LiveAnnouncementRepository(apiClient)
     val payslipRepository: PayslipRepository = LivePayslipRepository(apiClient)
     val assetRepository: AssetRepository = LiveAssetRepository(apiClient)
+    val notificationRepository: NotificationRepository = LiveNotificationRepository(apiClient)
+    val ticketRepository: TicketRepository = LiveTicketRepository(apiClient)
 }
