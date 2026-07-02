@@ -1,5 +1,10 @@
 package io.rocketpartners.hris.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,6 +34,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,9 +46,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import io.rocketpartners.hris.designsystem.Theme
+import io.rocketpartners.hris.feature.notifications.NotificationStore
+import kotlinx.coroutines.delay
 import io.rocketpartners.hris.feature.announcements.AnnouncementDetailScreen
 import io.rocketpartners.hris.feature.announcements.AnnouncementsScreen
 import io.rocketpartners.hris.feature.assets.MyAssetsScreen
@@ -70,6 +82,12 @@ enum class HrisTab(val key: String, val label: String, val icon: ImageVector) {
         val MAIN = listOf(HOME, CALENDAR, TIME_OFF, ME)
         fun fromKey(key: String?): HrisTab = entries.firstOrNull { it.key == key } ?: HOME
     }
+}
+
+/** Maps a logical destination (incl. legacy "leave"/"wfh") to a tab — both land on Schedule. */
+private fun logicalTab(key: String): HrisTab = when (key) {
+    "leave", "wfh", "timeoff" -> HrisTab.TIME_OFF
+    else -> HrisTab.fromKey(key)
 }
 
 /** Full-screen pushed destinations (iOS navigation push); they hide the tab-bar/bell/FAB chrome. */
@@ -104,9 +122,56 @@ fun MainTabScaffold(
     fun push(o: Overlay) = overlays.add(o)
     fun pop() { if (overlays.isNotEmpty()) overlays.removeAt(overlays.lastIndex) }
 
+    // Act on deep links (push taps / `hris://` URIs). Mirrors iOS `MainTabView.handle(_:)`.
+    val pendingLink by environment.deepLinkRouter.pending.collectAsState()
+    LaunchedEffect(pendingLink) {
+        val target = pendingLink ?: return@LaunchedEffect
+        when (target) {
+            is DeepLinkTarget.Tab -> { overlays.clear(); selected = logicalTab(target.key) }
+            is DeepLinkTarget.ApplyLeave -> { overlays.clear(); selected = HrisTab.TIME_OFF; scheduleAdd = "apply" }
+            is DeepLinkTarget.ScheduleWfh -> { overlays.clear(); selected = HrisTab.TIME_OFF; scheduleAdd = "wfh" }
+            is DeepLinkTarget.Notification -> {
+                val value = (target.referenceType ?: "").uppercase()
+                when {
+                    value.contains("TICKET") -> target.referenceId?.let { overlays.clear(); push(Overlay.TicketDetail(it)) }
+                    value.contains("LEAVE") -> { overlays.clear(); selected = HrisTab.TIME_OFF; if (currentUser.canApproveLeave) push(Overlay.Approvals(ApprovalKind.LEAVE)) }
+                    value.contains("WFH") -> { overlays.clear(); selected = HrisTab.TIME_OFF; if (currentUser.canApproveWfh) push(Overlay.Approvals(ApprovalKind.WFH)) }
+                    value.contains("CALENDAR") || value.contains("EVENT") -> { overlays.clear(); selected = HrisTab.CALENDAR }
+                    else -> { overlays.clear(); push(Overlay.Notifications) }
+                }
+            }
+        }
+        environment.deepLinkRouter.clear()
+    }
+
+    // Bell unread-count badge, polled every 30s while foregrounded (mirrors iOS pollUnreadCount).
+    val badgeStore = remember { NotificationStore(environment.notificationRepository) }
+    val badgeState by badgeStore.state.collectAsState()
+
+    // Once authenticated: request POST_NOTIFICATIONS (API 33+), register the FCM token, poll badge.
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        runCatching { environment.pushService.registerIfNeeded() }
+        while (true) {
+            badgeStore.refreshUnreadCount()
+            delay(30_000)
+        }
+    }
+
     Box(modifier.fillMaxSize()) {
         when (val top = overlays.lastOrNull()) {
-            is Overlay.Notifications -> NotificationInboxScreen(environment.notificationRepository, onBack = ::pop)
+            is Overlay.Notifications -> NotificationInboxScreen(
+                repository = environment.notificationRepository,
+                onBack = ::pop,
+                // Reuse the deep-link router so a detail's action routes exactly like a push tap.
+                onRoute = { refType, refId -> environment.deepLinkRouter.submit(DeepLinkTarget.Notification(refType, refId)) },
+            )
             is Overlay.Approvals -> ApprovalsScreen(
                 leaveRepository = environment.leaveRepository,
                 wfhRepository = environment.wfhRepository,
@@ -129,6 +194,7 @@ fun MainTabScaffold(
                 environment = environment,
                 currentUser = currentUser,
                 selected = selected,
+                unreadCount = badgeState.unreadCount,
                 onSelect = { selected = it },
                 scheduleAdd = scheduleAdd,
                 onScheduleAddConsumed = { scheduleAdd = null },
@@ -153,6 +219,7 @@ private fun TabRoot(
     environment: AppEnvironment,
     currentUser: User,
     selected: HrisTab,
+    unreadCount: Int,
     onSelect: (HrisTab) -> Unit,
     scheduleAdd: String?,
     onScheduleAddConsumed: () -> Unit,
@@ -198,12 +265,28 @@ private fun TabRoot(
             }
         }
 
-        CircleChrome(
-            icon = Icons.Outlined.Notifications,
-            contentDescription = "Notifications",
-            onClick = onBell,
-            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(Theme.Spacing.lg),
-        )
+        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(Theme.Spacing.lg)) {
+            CircleChrome(
+                icon = Icons.Outlined.Notifications,
+                contentDescription = "Notifications",
+                onClick = onBell,
+            )
+            if (unreadCount > 0) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFFFF3B30),
+                    contentColor = Color.White,
+                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp),
+                ) {
+                    Text(
+                        if (unreadCount > 99) "99+" else "$unreadCount",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                    )
+                }
+            }
+        }
 
         Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = Theme.Spacing.lg, bottom = 108.dp)) {
             Surface(onClick = { onFabMenu(true) }, shape = CircleShape, color = Theme.brand, contentColor = Color.White, shadowElevation = 6.dp) {

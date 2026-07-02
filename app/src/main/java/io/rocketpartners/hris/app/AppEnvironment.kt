@@ -47,6 +47,9 @@ class AppEnvironment(
 
     private val coordinator = AuthCoordinator(BackendConfig.baseUrl, httpClient, tokenStore)
 
+    /** The token authority, exposed so the global Coil image loader can attach bearer auth. */
+    val tokenProvider: io.rocketpartners.hris.core.auth.TokenProviding = coordinator
+
     val apiClient: ApiClient = LiveApiClient(BackendConfig.baseUrl, httpClient, coordinator)
 
     val authService: AuthService = AuthService(LiveAuthRepository(apiClient, tokenStore))
@@ -60,4 +63,11 @@ class AppEnvironment(
     val assetRepository: AssetRepository = LiveAssetRepository(apiClient)
     val notificationRepository: NotificationRepository = LiveNotificationRepository(apiClient)
     val ticketRepository: TicketRepository = LiveTicketRepository(apiClient)
+
+    /** Shared deep-link channel: fed by `MainActivity` intents, consumed by `MainTabScaffold`. */
+    val deepLinkRouter: DeepLinkRouter = DeepLinkRouter()
+
+    /** Registers the FCM device token with the backend (mirrors iOS `PushService`). */
+    val pushService: io.rocketpartners.hris.app.push.PushService =
+        io.rocketpartners.hris.app.push.PushService.from(context, notificationRepository, io.rocketpartners.hris.BuildConfig.DEBUG)
 }

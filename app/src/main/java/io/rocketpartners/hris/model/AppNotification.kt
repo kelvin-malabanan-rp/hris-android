@@ -66,6 +66,16 @@ enum class NotificationKind {
     ONBOARDING_UPDATE,
     OTHER;
 
+    /**
+     * Kinds representing a pending request awaiting someone's action. Single source of truth for the
+     * inbox Approvals filter (and any future approval affordances). Mirrors iOS `isApprovalRequest`.
+     */
+    val isApprovalRequest: Boolean
+        get() = when (this) {
+            LEAVE_REQUESTED, LEAVE_CANCELLATION_REQUESTED, WFH_REQUESTED, USER_APPROVAL, ONBOARDING_SUBMITTED -> true
+            else -> false
+        }
+
     companion object {
         fun fromWire(wire: String): NotificationKind = when (wire.uppercase()) {
             "TICKET_REPLY" -> TICKET_REPLY

@@ -42,6 +42,7 @@ import io.rocketpartners.hris.core.ui.Phase
 import io.rocketpartners.hris.designsystem.ContentCard
 import io.rocketpartners.hris.designsystem.DSCard
 import io.rocketpartners.hris.designsystem.EmptyState
+import io.rocketpartners.hris.designsystem.FilterChip
 import io.rocketpartners.hris.designsystem.InlineError
 import io.rocketpartners.hris.designsystem.Theme
 import io.rocketpartners.hris.designsystem.hexColor
@@ -239,34 +240,10 @@ private fun FilterChipsRow(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.sm),
     ) {
-        Chip("All", null, activeTypes.isEmpty(), onClear)
+        FilterChip("All", activeTypes.isEmpty(), onClear)
         types.forEach { type ->
-            Chip(type.label, hexColor(type.color), type.slug in activeTypes) { onToggle(type.slug) }
+            FilterChip(type.label, type.slug in activeTypes, { onToggle(type.slug) }, color = hexColor(type.color))
         }
-    }
-}
-
-@Composable
-private fun Chip(label: String, color: Color?, isOn: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .background(
-                if (isOn) Theme.brand.copy(alpha = Theme.Opacity.surface) else MaterialTheme.colorScheme.surfaceContainer,
-                CircleShape,
-            )
-            .then(if (isOn) Modifier.border(Theme.Stroke.subtle, Theme.brand, CircleShape) else Modifier)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Theme.Spacing.md, vertical = Theme.Spacing.sm),
-        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (color != null) Box(Modifier.size(8.dp).background(color, CircleShape))
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = if (isOn) Theme.brand else MaterialTheme.colorScheme.onSurface,
-        )
     }
 }
 

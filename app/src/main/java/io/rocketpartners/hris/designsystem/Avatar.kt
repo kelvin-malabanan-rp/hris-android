@@ -39,9 +39,12 @@ fun Avatar(
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
-        if (model != null) {
+        // A String model is a wire image reference (often a relative `/uploads` path); resolve it to
+        // a full URL so the authenticated Coil loader can fetch it. Non-String models pass through.
+        val resolved: Any? = if (model is String) io.rocketpartners.hris.core.networking.ImageUrls.resolve(model) else model
+        if (resolved != null) {
             SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current).data(model).crossfade(true).build(),
+                model = ImageRequest.Builder(LocalContext.current).data(resolved).crossfade(true).build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size),

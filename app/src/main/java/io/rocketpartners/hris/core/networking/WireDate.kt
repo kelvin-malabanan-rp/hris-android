@@ -23,13 +23,17 @@ object WireDate {
     fun month(instant: Instant): String =
         YearMonth.from(LocalDate.ofInstant(instant, ZoneOffset.UTC)).toString()
 
-    /** Parses a wire date string, trying date-only then ISO datetime. Returns null on failure. */
+    /**
+     * Parses a wire date string — ISO datetime when it contains a time separator (`T`), otherwise
+     * `yyyy-MM-dd` — so neither shape pays a doomed parse attempt first. Offset-less `LocalDateTime`
+     * strings return null (matching iOS's `ISO8601DateFormatter(.withInternetDateTime)`).
+     */
     fun parse(string: String): Instant? {
-        runCatching { LocalDate.parse(string) }.getOrNull()
-            ?.let { return it.atStartOfDay(ZoneOffset.UTC).toInstant() }
-        runCatching { Instant.parse(string) }.getOrNull()?.let { return it }
-        runCatching { OffsetDateTime.parse(string).toInstant() }.getOrNull()?.let { return it }
-        return null
+        if (string.contains("T")) {
+            runCatching { Instant.parse(string) }.getOrNull()?.let { return it }
+            return runCatching { OffsetDateTime.parse(string).toInstant() }.getOrNull()
+        }
+        return runCatching { LocalDate.parse(string) }.getOrNull()?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
     }
 
     /** UTC civil day (midnight-anchored instant) for [instant] — used for timezone-safe day matching. */

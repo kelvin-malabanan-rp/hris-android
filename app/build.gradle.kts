@@ -5,6 +5,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// The google-services plugin only runs when a real (or placeholder) google-services.json is present,
+// so the project still builds if a developer hasn't dropped in their Firebase config. FCM is inert
+// until a valid config from the Firebase console replaces the committed placeholder.
+if (file("google-services.json").exists()) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+}
+
 android {
     namespace = "io.rocketpartners.hris"
     compileSdk = 36
@@ -75,6 +82,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
     implementation(libs.androidx.security.crypto)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

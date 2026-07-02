@@ -1,7 +1,9 @@
 package io.rocketpartners.hris.feature.notifications
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,21 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.FlightTakeoff
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,35 +26,58 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import io.rocketpartners.hris.core.ui.Phase
 import io.rocketpartners.hris.designsystem.EmptyState
 import io.rocketpartners.hris.designsystem.ErrorState
+import io.rocketpartners.hris.designsystem.FilterChip
+import io.rocketpartners.hris.designsystem.FilterChipStyle
 import io.rocketpartners.hris.designsystem.Theme
-import io.rocketpartners.hris.model.AppNotification
-import io.rocketpartners.hris.model.NotificationKind
 import kotlinx.coroutines.launch
 
-/** Notification inbox: per-kind icon/color, unread dot, tap-to-read, mark-all-read. Mirrors iOS. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Notification inbox: a filter-chip bar (All / Unread / Approvals / Tickets) above a list sectioned
+ * by time (Today / Yesterday / Last 7 days / Earlier). Rows open a detail screen that marks the
+ * notification read and can route to its destination. Mirrors iOS `NotificationInboxView`.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun NotificationInboxScreen(repository: NotificationRepository, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun NotificationInboxScreen(
+    repository: NotificationRepository,
+    onBack: () -> Unit,
+    onRoute: (referenceType: String?, referenceId: Int?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val store = remember { NotificationStore(repository) }
     val state by store.state.collectAsState()
     val scope = rememberCoroutineScope()
+    var filter by remember { mutableStateOf(InboxFilter.ALL) }
+    var selected by remember { mutableStateOf<io.rocketpartners.hris.model.AppNotification?>(null) }
 
     LaunchedEffect(Unit) { store.load() }
+
+    val detail = selected
+    if (detail != null) {
+        LaunchedEffect(detail.id) { store.markRead(detail) }
+        NotificationDetailScreen(
+            notification = detail,
+            onBack = { selected = null },
+            onRoute = { onRoute(detail.referenceType, detail.referenceId) },
+            modifier = modifier,
+        )
+        return
+    }
 
     Scaffold(
         modifier = modifier,
@@ -75,63 +91,80 @@ fun NotificationInboxScreen(repository: NotificationRepository, onBack: () -> Un
             )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            when (val phase = state.phase) {
-                is Phase.Failed -> ErrorState(message = phase.message, retry = { store.load() })
-                is Phase.Loaded -> if (state.notifications.isEmpty()) {
-                    EmptyState(icon = Icons.Filled.NotificationsNone, title = "You're all caught up", message = "New notifications will appear here.", modifier = Modifier.fillMaxSize().padding(Theme.Spacing.xl))
-                } else {
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = Theme.Spacing.sm)) {
-                        state.notifications.forEach { n ->
-                            NotificationRow(n) { scope.launch { store.markRead(n) } }
-                        }
-                    }
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            InboxFilterBar(filter) { filter = it }
+            Box(Modifier.fillMaxSize()) {
+                val phase = state.phase
+                when {
+                    phase is Phase.Failed -> ErrorState(message = phase.message, retry = { store.load() })
+                    (phase is Phase.Idle || phase is Phase.Loading) && state.notifications.isEmpty() ->
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    else -> InboxList(
+                        groups = InboxGrouping.groups(state.notifications.filter { filter.matches(it) }),
+                        filter = filter,
+                        refreshing = phase is Phase.Loading,
+                        onRefresh = { scope.launch { store.load() } },
+                        onOpen = { selected = it },
+                    )
                 }
-                else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun InboxList(
+    groups: List<InboxGroup>,
+    filter: InboxFilter,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
+    onOpen: (io.rocketpartners.hris.model.AppNotification) -> Unit,
+) {
+    PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+        if (groups.isEmpty()) {
+            EmptyState(
+                icon = Icons.Filled.NotificationsNone,
+                title = "No notifications",
+                message = filter.emptyMessage,
+                modifier = Modifier.fillMaxSize().padding(Theme.Spacing.xl),
+            )
+            return@PullToRefreshBox
+        }
+        LazyColumn(Modifier.fillMaxSize()) {
+            groups.forEach { group ->
+                stickyHeader(key = group.title) { SectionHeader(group.title) }
+                items(group.items, key = { it.id }) { notification ->
+                    InboxRow(notification, Modifier.fillMaxWidth().clickable { onOpen(notification) })
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NotificationRow(n: AppNotification, onClick: () -> Unit) {
-    val (icon, tint) = visual(n.kind)
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Theme.Spacing.lg, vertical = Theme.Spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.md),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Box(Modifier.size(Theme.Size.iconBadge).background(tint.copy(alpha = Theme.Opacity.fill), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(n.title, style = MaterialTheme.typography.bodyMedium, fontWeight = if (n.isRead) FontWeight.Normal else FontWeight.SemiBold)
-            Text(n.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (!n.isRead) Box(Modifier.padding(top = 4.dp).size(Theme.Size.unreadDot).background(Theme.brand, CircleShape))
-    }
+private fun SectionHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = Theme.Spacing.lg, vertical = Theme.Spacing.sm),
+    )
 }
 
-/** Maps a notification kind to an icon + semantic color. Mirrors iOS `NotificationKind.systemImage`. */
+/** Horizontal chip row selecting an [InboxFilter]; mirrors iOS `InboxFilterBar` (solid selected). */
 @Composable
-private fun visual(kind: NotificationKind): Pair<ImageVector, Color> {
-    val green = Theme.statusColor("approved")
-    val red = Theme.statusColor("rejected")
-    val orange = Theme.Accent.PENDING.tint
-    return when (kind) {
-        NotificationKind.TICKET_REPLY -> Icons.AutoMirrored.Filled.Chat to Theme.brand
-        NotificationKind.TICKET_STATUS -> Icons.Filled.Description to Theme.brand
-        NotificationKind.LEAVE_REQUESTED -> Icons.Filled.FlightTakeoff to orange
-        NotificationKind.LEAVE_APPROVED, NotificationKind.LEAVE_CANCELLATION_APPROVED -> Icons.Filled.CheckCircle to green
-        NotificationKind.LEAVE_REJECTED, NotificationKind.LEAVE_CANCELLATION_REJECTED -> Icons.Filled.Cancel to red
-        NotificationKind.LEAVE_CANCELLED -> Icons.Filled.Block to Theme.statusColor("cancelled")
-        NotificationKind.LEAVE_CANCELLATION_REQUESTED -> Icons.Filled.FlightTakeoff to orange
-        NotificationKind.WFH_REQUESTED -> Icons.Filled.Home to orange
-        NotificationKind.WFH_APPROVED -> Icons.Filled.Home to green
-        NotificationKind.WFH_REJECTED -> Icons.Filled.Home to red
-        NotificationKind.USER_APPROVAL -> Icons.Filled.VerifiedUser to Theme.brand
-        NotificationKind.ONBOARDING_SUBMITTED, NotificationKind.ONBOARDING_APPROVED,
-        NotificationKind.ONBOARDING_REJECTED, NotificationKind.ONBOARDING_UPDATE -> Icons.Filled.Description to Theme.brand
-        NotificationKind.OTHER -> Icons.Filled.NotificationsNone to Theme.brand
+private fun InboxFilterBar(selection: InboxFilter, onSelect: (InboxFilter) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Theme.Spacing.lg, vertical = Theme.Spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.sm),
+    ) {
+        InboxFilter.entries.forEach { candidate ->
+            FilterChip(candidate.label, candidate == selection, { onSelect(candidate) }, style = FilterChipStyle.Solid)
+        }
     }
 }

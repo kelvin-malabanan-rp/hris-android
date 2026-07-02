@@ -174,13 +174,23 @@ internal object MockFixtures {
 
     private val wfhUsageData = """{"used":2,"quota":3,"remaining":1}"""
 
-    private val notificationsPagedData = """
+    // Timestamps are generated as offsets from now so the inbox's time sections (Today / Yesterday /
+    // Last 7 days / Earlier) never decay — mirrors the iOS fixture regeneration.
+    private fun agoIso(daysAgo: Long, hoursAgo: Long): String =
+        java.time.format.DateTimeFormatter.ISO_INSTANT.format(
+            java.time.Instant.now()
+                .minus(java.time.Duration.ofDays(daysAgo).plusHours(hoursAgo))
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS),
+        )
+
+    private val notificationsPagedData: String
+        get() = """
         {"content":[
-          {"id":5001,"type":"LEAVE_APPROVED","title":"Leave approved","message":"Your annual leave for June 22-24 was approved by your manager.","referenceType":"LEAVE","referenceId":1001,"isRead":false,"readAt":null,"createdAt":"2026-06-16T08:30:00Z"},
-          {"id":5002,"type":"LEAVE_REQUESTED","title":"Leave request submitted","message":"Your leave request is awaiting manager approval.","referenceType":"LEAVE","referenceId":1005,"isRead":false,"readAt":null,"createdAt":"2026-06-15T17:05:00Z"},
-          {"id":5003,"type":"TICKET_REPLY","title":"New reply on your ticket","message":"IT replied to your hardware request ticket.","referenceType":"TICKET","referenceId":42,"isRead":false,"readAt":null,"createdAt":"2026-06-15T11:20:00Z"},
-          {"id":5004,"type":"LEAVE_REJECTED","title":"Leave rejected","message":"Your leave for May 19-20 was rejected.","referenceType":"LEAVE","referenceId":1003,"isRead":true,"readAt":"2026-06-14T09:00:00Z","createdAt":"2026-06-13T15:45:00Z"},
-          {"id":5005,"type":"ONBOARDING_APPROVED","title":"Onboarding approved","message":"Your onboarding documents were approved. Welcome aboard!","referenceType":"ONBOARDING","referenceId":7,"isRead":true,"readAt":"2026-06-10T10:00:00Z","createdAt":"2026-06-09T12:00:00Z"}
+          {"id":5001,"type":"LEAVE_APPROVED","title":"Leave approved","message":"Your annual leave for June 22-24 was approved by your manager.","referenceType":"LEAVE","referenceId":1001,"isRead":false,"readAt":null,"createdAt":"${agoIso(0, 2)}"},
+          {"id":5002,"type":"LEAVE_REQUESTED","title":"Leave request submitted","message":"Your leave request is awaiting manager approval.","referenceType":"LEAVE","referenceId":1005,"isRead":false,"readAt":null,"createdAt":"${agoIso(0, 5)}"},
+          {"id":5003,"type":"TICKET_REPLY","title":"New reply on your ticket","message":"IT replied to your hardware request ticket.","referenceType":"TICKET","referenceId":42,"isRead":false,"readAt":null,"createdAt":"${agoIso(1, 3)}"},
+          {"id":5004,"type":"LEAVE_REJECTED","title":"Leave rejected","message":"Your leave for May 19-20 was rejected.","referenceType":"LEAVE","referenceId":1003,"isRead":true,"readAt":null,"createdAt":"${agoIso(3, 0)}"},
+          {"id":5005,"type":"ONBOARDING_APPROVED","title":"Onboarding approved","message":"Your onboarding documents were approved. Welcome aboard!","referenceType":"ONBOARDING","referenceId":7,"isRead":true,"readAt":null,"createdAt":"${agoIso(20, 0)}"}
         ],"totalElements":5,"empty":false}
     """.trimIndent()
 
