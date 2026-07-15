@@ -19,6 +19,17 @@ class LoginStore {
     /** Whether the user has typed anything into email yet (so we don't flag an empty field). */
     val hasEmailInput: Boolean get() = trimmedEmail.isNotEmpty()
 
+    // The redesigned sign-in screen is SSO-first; the OAuth wiring ships separately
+    // (out of scope for the visual redesign), so these are intentional no-ops for now.
+
+    fun signInWithGoogle() {
+        // TODO: Google OAuth.
+    }
+
+    fun signInWithOkta() {
+        // TODO: Okta OAuth.
+    }
+
     private companion object {
         val EMAIL_REGEX = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
     }
