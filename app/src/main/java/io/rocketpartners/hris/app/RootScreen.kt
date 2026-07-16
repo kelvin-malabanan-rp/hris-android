@@ -15,7 +15,11 @@ import io.rocketpartners.hris.feature.login.LoginScreen
  * authenticated. Restores a session at launch via [AuthService.bootstrap]. Mirrors iOS `RootView`.
  */
 @Composable
-fun RootScreen(environment: AppEnvironment, initialTab: HrisTab = HrisTab.HOME) {
+fun RootScreen(
+    environment: AppEnvironment,
+    initialTab: HrisTab = HrisTab.HOME,
+    startAtSignIn: Boolean = false,
+) {
     val authService = environment.authService
     val state by authService.state.collectAsState()
 
@@ -30,7 +34,7 @@ fun RootScreen(environment: AppEnvironment, initialTab: HrisTab = HrisTab.HOME) 
         if (authenticated && current is AuthState.Authenticated) {
             MainTabScaffold(environment = environment, currentUser = current.user, initialTab = initialTab)
         } else {
-            LoginScreen(authService = authService)
+            LoginScreen(authService = authService, startAtSignIn = startAtSignIn)
         }
     }
 }

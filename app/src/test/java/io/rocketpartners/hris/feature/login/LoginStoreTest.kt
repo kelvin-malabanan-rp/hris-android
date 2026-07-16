@@ -1,5 +1,6 @@
 package io.rocketpartners.hris.feature.login
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,5 +38,20 @@ class LoginStoreTest {
     @Test
     fun emptyEmailIsNotFlaggedAsInput() {
         assertFalse(LoginStore().hasEmailInput)
+    }
+
+    @Test
+    fun ssoStubsDoNotTouchFormState() {
+        // The OAuth wiring ships separately; until then the SSO entry points must be safe
+        // no-ops that leave the email/password form untouched.
+        val store = LoginStore().apply {
+            email = "ada@rp.io"
+            password = "pw"
+        }
+        store.signInWithGoogle()
+        store.signInWithOkta()
+        assertEquals("ada@rp.io", store.email)
+        assertEquals("pw", store.password)
+        assertTrue(store.canSubmit)
     }
 }

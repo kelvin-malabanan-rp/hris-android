@@ -11,9 +11,10 @@ import io.rocketpartners.hris.designsystem.HrisTheme
 
 /**
  * Single-activity host. Reads launch flags from intent extras (the Android analog of the iOS launch
- * args): `--ez mock true`, `--ez autologin true`, `--es tab home|calendar|leave|me|search`. Also
- * parses deep-link intents (push taps + `hris://` URIs) into [DeepLinkRouter] — mirrors iOS
- * `AppDelegate` forwarding notification payloads to the router.
+ * args): `--ez mock true`, `--ez autologin true`, `--es tab home|calendar|leave|me|search`, and
+ * `--ez signin true` to open the sign-in screen directly (screenshots/previews). Also parses
+ * deep-link intents (push taps + `hris://` URIs) into [DeepLinkRouter] — mirrors iOS `AppDelegate`
+ * forwarding notification payloads to the router.
  */
 class MainActivity : ComponentActivity() {
 
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
         val mock = intent.getBooleanExtra("mock", BuildConfig.MOCK_DEFAULT)
         val autoLogin = intent.getBooleanExtra("autologin", false)
         val initialTab = HrisTab.fromKey(intent.getStringExtra("tab"))
+        val startAtSignIn = intent.getBooleanExtra("signin", false)
         environment = AppEnvironment(applicationContext, mock = mock, autoLogin = autoLogin)
         // Hand the token authority to the global Coil loader so `/uploads` images load authenticated.
         (application as? HrisApp)?.tokenProvider = environment.tokenProvider
@@ -35,7 +37,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             HrisTheme {
-                RootScreen(environment = environment, initialTab = initialTab)
+                RootScreen(environment = environment, initialTab = initialTab, startAtSignIn = startAtSignIn)
             }
         }
     }
